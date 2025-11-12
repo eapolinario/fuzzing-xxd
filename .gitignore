@@ -1,1 +1,3 @@
 .direnv/
+.hypothesis/
+__pycache__/
