@@ -31,9 +31,25 @@ def mutate(data: bytes) -> bytes:
 
 def run_xxd(binary_path, input_bytes):
     try:
-        p = subprocess.run([binary_path, "-r"], input=input_bytes,
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
-        return p.returncode, p.stdout, p.stderr
+        # run `binary_path` first, then feed its stdout into `binary_path -r`
+        forward = subprocess.run(
+            [binary_path],
+            input=input_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+        if forward.returncode != 0:
+            return forward.returncode, forward.stdout, forward.stderr
+
+        reverse = subprocess.run(
+            [binary_path, "-r"],
+            input=forward.stdout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+        return reverse.returncode, reverse.stdout, forward.stderr + reverse.stderr
     except subprocess.TimeoutExpired:
         return 124, b"", b"TIMED OUT"
 
@@ -59,8 +75,9 @@ if not seeds:
 
 # main loop
 iters = 0
+MAX_ITERS = 10_000_000
 try:
-    while True:
+    while iters < MAX_ITERS:
         iters += 1
         seed = random.choice(seeds)
         mutated = mutate(seed)
