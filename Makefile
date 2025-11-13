@@ -6,7 +6,7 @@ help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 hypothesis: ## Run Hypothesis-based pytest
-	uv run --with hypothesis --with pytest pytest --capture=no diff_test_hypothesis.py
+	uv run --with hypothesis --with pytest pytest -vvv diff_test_hypothesis.py
 
 diff_fuzz: check-radamsa ## Run diff_fuzz script
 	uv run diff_fuzz.py
