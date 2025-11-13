@@ -1,7 +1,7 @@
 {
   description = "fuzzing-xxd dev environment (flake)";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
   # Pull select toolchains (e.g. newer Zig/Go) from nixpkgs-unstable while keeping the base system on 24.05.
   inputs.unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -78,13 +78,61 @@
         mainProgram = "ggd";
       };
     };
+
+    mkUv = { pkgs, system }: let
+      version = "0.9.9";
+      assetFor = {
+        "x86_64-linux" = {
+          url = "https://github.com/astral-sh/uv/releases/download/${version}/uv-x86_64-unknown-linux-gnu.tar.gz";
+          hash = "sha256-nsMDhz4A3u1E0bK1K4WreqVdhJWI1yQimHSDkOrqB+8=";
+        };
+        "aarch64-linux" = {
+          url = "https://github.com/astral-sh/uv/releases/download/${version}/uv-aarch64-unknown-linux-gnu.tar.gz";
+          hash = "sha256-NcutifImoGzYspX5RucIPhXNb6BY4JwuArs4i+Oaj+Q=";
+        };
+        "x86_64-darwin" = {
+          url = "https://github.com/astral-sh/uv/releases/download/${version}/uv-x86_64-apple-darwin.tar.gz";
+          hash = "sha256-inVZcdvws5TLYWB8PSHoGv/WKiLP0wY1HrUYvno/Cok=";
+        };
+        "aarch64-darwin" = {
+          url = "https://github.com/astral-sh/uv/releases/download/${version}/uv-aarch64-apple-darwin.tar.gz";
+          hash = "sha256-c34cLE+XV3qndkFBhG4n3pFe67OyoPRnRRCJpkgk0vc=";
+        };
+      };
+      asset = assetFor.${system};
+    in pkgs.stdenvNoCC.mkDerivation {
+      pname = "uv";
+      inherit version;
+
+      src = pkgs.fetchurl asset;
+
+      dontConfigure = true;
+      dontBuild = true;
+
+      installPhase = ''
+        runHook preInstall
+        tar -xzf "$src"
+        install -Dm755 uv "$out/bin/uv"
+        install -Dm755 uvx "$out/bin/uvx"
+        runHook postInstall
+      '';
+
+      meta = with pkgs.lib; {
+        description = "Lightning-fast Python package and project manager";
+        homepage = "https://github.com/astral-sh/uv";
+        license = licenses.asl20;
+        platforms = [ system ];
+        mainProgram = "uv";
+      };
+    };
   in {
     packages = forAllSystems ({ pkgs, unstablePkgs, system }: let
       zzd = mkZzd { inherit pkgs unstablePkgs; };
       ggd = mkGgd { inherit pkgs unstablePkgs; };
+      uv = mkUv { inherit pkgs system; };
     in {
       default = zzd;
-      inherit zzd ggd;
+      inherit zzd ggd uv;
     });
 
     devShells = forAllSystems ({ pkgs, system, unstablePkgs }: {
@@ -93,6 +141,8 @@
           pkgs.radamsa
           self.packages.${system}.zzd
           self.packages.${system}.ggd
+          self.packages.${system}.uv
+          pkgs.python312
         ];
       };
     });
