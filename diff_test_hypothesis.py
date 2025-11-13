@@ -7,8 +7,8 @@ from hypothesis import settings, Verbosity
 # settings.default.verbosity = Verbosity.verbose
 
 # Adjust these paths to your actual binaries:
-XXD_A = Path("/home/eduardo/repos/eapolinario-ggd/build/ggd")   # path to implementation A
-XXD_B = Path("zzd")   # path to implementation B
+XXD_A = Path("ggd")   # Go implementation from the flake dev shell
+XXD_B = Path("zzd")   # Zig implementation from the flake dev shell
 
 
 def run_cmd(argv, stdin: bytes):
