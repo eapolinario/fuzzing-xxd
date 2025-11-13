@@ -7,10 +7,8 @@ from hypothesis import settings, Verbosity
 # settings.default.verbosity = Verbosity.verbose
 
 # Adjust these paths to your actual binaries:
-XXD_REF = Path("/usr/bin/xxd")   # "ground truth" xxd for encoding
 XXD_A = Path("/home/eduardo/repos/eapolinario-ggd/build/ggd")   # path to implementation A
-# TODO: Point XXD_B to zzd once https://github.com/eapolinario/zzd/issues/3 is fixed
-XXD_B = XXD_REF
+XXD_B = Path("/home/eduardo/repos/eapolinario-zzd/zig-out/bin/eapolinario_zzd")   # path to implementation B
 
 
 def run_cmd(argv, stdin: bytes):
@@ -25,11 +23,10 @@ def run_cmd(argv, stdin: bytes):
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def xxd_encode_ref(data: bytes) -> bytes:
-    """Encode binary -> hexdump using a reference xxd."""
-    rc, out, err = run_cmd([XXD_REF], data)
+def xxd_encode(binary: Path, data: bytes) -> bytes:
+    rc, out, err = run_cmd([binary], data)
     if rc != 0:
-        raise RuntimeError(f"ref xxd failed: rc={rc}, stderr={err!r}")
+        raise RuntimeError(f"xxd={binary=} failed: rc={rc}, stderr={err!r}")
     return out
 
 
@@ -38,22 +35,26 @@ def xxd_reverse(binary: Path, hexdump: bytes):
     return run_cmd([binary, "-r"], hexdump)
 
 
-# Strategy: arbitrary binary blobs up to, say, 4 KiB
-binary_blobs = st.binary(min_size=0, max_size=4096)
+# Strategy: arbitrary binary blobs up to, say, 40 KiB
+binary_blobs = st.binary(min_size=0, max_size=4096 * 10)
 
 
 @settings(
     max_examples=10_000_000,
+    # max_examples=10_000,
     verbosity=Verbosity.verbose,
-)  # tune as you like
+)
 @given(data=binary_blobs)
 def test_xxd_reverse_implementations_agree_on_roundtrip(data: bytes):
     # 1) encode with reference xxd
-    hexdump = xxd_encode_ref(data)
+    hexdump_a = xxd_encode(XXD_A, data)
+    hexdump_b = xxd_encode(XXD_B, data)
+
+    assert hexdump_a == hexdump_b, f"xxdA and xxdB disagree on hexdump output. xxdA={hexdump_a!r}, xxdB={hexdump_b!r}"
 
     # 2) decode with both implementations
-    rc_a, out_a, err_a = xxd_reverse(XXD_A, hexdump)
-    rc_b, out_b, err_b = xxd_reverse(XXD_B, hexdump)
+    rc_a, out_a, err_a = xxd_reverse(XXD_A, hexdump_a)
+    rc_b, out_b, err_b = xxd_reverse(XXD_B, hexdump_b)
 
     # 3) basic expectations: both should succeed
     assert rc_a == 0, f"xxdA failed with rc={rc_a}, stderr={err_a!r}"
