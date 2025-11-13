@@ -2,15 +2,18 @@
   description = "fuzzing-xxd dev environment (flake)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  inputs.zigpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-  outputs = { self, nixpkgs }: let
+  outputs = { self, nixpkgs, zigpkgs }: let
     systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
     forAllSystems = f:
       nixpkgs.lib.genAttrs systems (system:
-        let pkgs = import nixpkgs { inherit system; };
-        in f { inherit system pkgs; });
+        let
+          pkgs = import nixpkgs { inherit system; };
+          zigPkgs = import zigpkgs { inherit system; };
+        in f { inherit system pkgs zigPkgs; });
 
-    mkZzd = pkgs: pkgs.stdenv.mkDerivation {
+    mkZzd = { pkgs, zigPkgs }: pkgs.stdenv.mkDerivation {
       pname = "zzd";
       version = "0.0.0-8a281ef";
 
@@ -21,7 +24,7 @@
         hash = "sha256-uS+Is/R7zvH6Riy3gEQdF7+zZwL0PHz4qDh2qaLqp24=";
       };
 
-      nativeBuildInputs = [ pkgs.zig ];
+      nativeBuildInputs = [ zigPkgs.zig ];
       dontConfigure = true;
 
       buildPhase = ''
@@ -50,14 +53,14 @@
       };
     };
   in {
-    packages = forAllSystems ({ pkgs, ... }: let
-      zzd = mkZzd pkgs;
+    packages = forAllSystems ({ pkgs, zigPkgs, system }: let
+      zzd = mkZzd { inherit pkgs zigPkgs; };
     in {
       default = zzd;
       inherit zzd;
     });
 
-    devShells = forAllSystems ({ pkgs, system }: {
+    devShells = forAllSystems ({ pkgs, system, zigPkgs }: {
       default = pkgs.mkShell {
         packages = [
           pkgs.radamsa

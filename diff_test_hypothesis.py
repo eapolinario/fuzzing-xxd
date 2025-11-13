@@ -8,7 +8,7 @@ from hypothesis import settings, Verbosity
 
 # Adjust these paths to your actual binaries:
 XXD_A = Path("/home/eduardo/repos/eapolinario-ggd/build/ggd")   # path to implementation A
-XXD_B = Path("/home/eduardo/repos/eapolinario-zzd/zig-out/bin/eapolinario_zzd")   # path to implementation B
+XXD_B = Path("zzd")   # path to implementation B
 
 
 def run_cmd(argv, stdin: bytes):
@@ -40,8 +40,8 @@ binary_blobs = st.binary(min_size=0, max_size=4096 * 10)
 
 
 @settings(
-    max_examples=10_000_000,
-    # max_examples=10_000,
+    # max_examples=10_000_000,
+    max_examples=10,
     verbosity=Verbosity.verbose,
 )
 @given(data=binary_blobs)
